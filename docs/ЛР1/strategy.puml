@@ -1,0 +1,33 @@
+@startuml
+title Паттерн Strategy — сортировка сотрудников
+
+class Employee {
+    +Id: int
+    +Name: string
+    +ToString(): string
+}
+
+interface "IComparer<Employee>" as IComparer {
+    +Compare(x, y): int
+}
+
+class EmployeeByIdComparer {
+    +Compare(x, y): int
+}
+
+class EmployeeByNameComparer {
+    +Compare(x, y): int
+}
+
+class EmployeeRunner {
+    -list: List<Employee>
+    +Run(): void
+}
+
+IComparer <|.. EmployeeByIdComparer
+IComparer <|.. EmployeeByNameComparer
+
+EmployeeRunner o-- "0..*" Employee
+EmployeeRunner ..> IComparer : использует\n(альтернативный вариант)
+
+@enduml

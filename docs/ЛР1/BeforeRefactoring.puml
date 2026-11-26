@@ -1,0 +1,20 @@
+@startuml
+class LogProcessingModule {
+    - configuration
+    - databaseConnection
+    + ProcessLogs()
+    + ReadLogs()
+    + ParseLine()
+    + FilterRecord()
+    + FormatRecord()
+    + WriteRecord()
+}
+
+class FileSystem
+class Database
+class Console
+
+LogProcessingModule --> FileSystem : reads logs
+LogProcessingModule --> Database : writes data
+LogProcessingModule --> Console : outputs logs
+@enduml
