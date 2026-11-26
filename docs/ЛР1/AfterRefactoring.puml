@@ -1,0 +1,64 @@
+@startuml
+class Program
+
+class W3CLogFileSource {
+    + ReadLines(filePath)
+}
+
+class W3CLogParser {
+    - _fields
+    + ProcessDirective(line)
+    + Parse(line)
+}
+
+class LogRecord {
+    + Fields
+    + GetValue(fieldName)
+}
+
+class LogFilter {
+    + IsAllowed(record)
+}
+
+class LogFormatter {
+    + ToPlainText(record)
+    + ToJson(record)
+}
+
+class LogProcessor {
+    - _parser
+    - _filter
+    - _sinks
+    + ProcessLine(line)
+}
+
+interface ILogSink {
+    + Write(record)
+}
+
+class ConsoleLogSink {
+    + Write(record)
+}
+
+class SqliteLogSink {
+    + Write(record)
+    + Dispose()
+}
+
+Program --> W3CLogFileSource
+Program --> LogProcessor
+Program --> ConsoleLogSink
+Program --> SqliteLogSink
+
+LogProcessor --> W3CLogParser
+LogProcessor --> LogFilter
+LogProcessor --> ILogSink
+
+W3CLogParser --> LogRecord
+LogFilter --> LogRecord
+LogFormatter --> LogRecord
+
+ConsoleLogSink ..|> ILogSink
+SqliteLogSink ..|> ILogSink
+ConsoleLogSink --> LogFormatter
+@enduml
