@@ -1,10 +1,12 @@
-﻿using LogHub.Filtering;
+﻿
+using LogHub.Filtering;
 using LogHub.Formatting;
 using LogHub.Parsing;
 using LogHub.Processing;
 using LogHub.Sinks;
 using LogHub.Sources;
 using LogHub.Graphs;
+using Microsoft.Extensions.DependencyInjection;
 
 if (args.Length == 0)
 {
@@ -12,14 +14,12 @@ if (args.Length == 0)
     return;
 }
 
-var source = new W3CLogFileSource();
-var parser = new W3CLogParser();
-var importer = new W3CLogImporter(source, parser, args[0]);
+var services = new ServiceCollection();
 
-var filter = new LogFilter();
-var formatter = new LogFormatter();
-
-using var sqliteSink = new SqliteLogSink("logs.db");
+services.AddSingleton<W3CLogFileSource>();
+services.AddSingleton<W3CLogParser>();
+services.AddSingleton<LogFilter>();
+services.AddSingleton<LogFormatter>();
 
 var sinks = new ILogSink[]
 {
@@ -72,3 +72,26 @@ else
 {
     Console.WriteLine("Циклов не найдено.");
 }
+var profile = File.ReadAllText("profile.txt").Trim();
+
+if (profile == "console")
+{
+    services.AddSingleton<ILogSink, ConsoleLogSink>();
+}
+else if (profile == "file")
+{
+    services.AddSingleton<ILogSink>(_ => new SqliteLogSink("logs.db"));
+}
+else
+{
+    throw new InvalidOperationException(
+        $"Неизвестный профиль: {profile}");
+}
+
+services.AddSingleton<LogProcessor>();
+services.AddSingleton<LogHubApplication>();
+
+using var provider = services.BuildServiceProvider();
+
+var app = provider.GetRequiredService<LogHubApplication>();
+app.Run(args[0]);
