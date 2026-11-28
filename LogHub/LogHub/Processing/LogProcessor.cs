@@ -1,12 +1,12 @@
 using LogHub.Filtering;
-using LogHub.Parsing;
 using LogHub.Sinks;
+using LogHub.Sources;
 
 namespace LogHub.Processing;
 
 public class LogProcessor
 {
-    private readonly W3CLogParser _parser;
+    private readonly ILogImporter _importer;
     private readonly LogFilter _filter;
     private readonly IReadOnlyCollection<ILogSink> _sinks;
 
@@ -14,33 +14,31 @@ public class LogProcessor
     public int Skipped { get; private set; }
 
     public LogProcessor(
-        W3CLogParser parser,
+        ILogImporter importer,
         LogFilter filter,
         IEnumerable<ILogSink> sinks)
     {
-        _parser = parser;
+        _importer = importer;
         _filter = filter;
         _sinks = sinks.ToList();
     }
 
-    public void ProcessLine(string line)
+    public void Process()
     {
-        if (_parser.ProcessDirective(line))
-            return;
-
-        var record = _parser.Parse(line);
-
-        if (record is null || !_filter.IsAllowed(record))
+        foreach (var record in _importer.Import())
         {
-            Skipped++;
-            return;
-        }
+            if (!_filter.IsAllowed(record))
+            {
+                Skipped++;
+                continue;
+            }
 
-        foreach (var sink in _sinks)
-        {
-            sink.Write(record);
-        }
+            foreach (var sink in _sinks)
+            {
+                sink.Write(record);
+            }
 
-        Written++;
+            Written++;
+        }
     }
 }
