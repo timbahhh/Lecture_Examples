@@ -1,10 +1,8 @@
-﻿
-using LogHub.Filtering;
+﻿using LogHub.Filtering;
 using LogHub.Formatting;
 using LogHub.Parsing;
 using LogHub.Processing;
 using LogHub.Sinks;
-using LogHub.Sources;
 using LogHub.Graphs;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,25 +14,40 @@ if (args.Length == 0)
 
 var services = new ServiceCollection();
 
-services.AddSingleton<W3CLogFileSource>();
 services.AddSingleton<W3CLogParser>();
 services.AddSingleton<LogFilter>();
 services.AddSingleton<LogFormatter>();
 
-var sinks = new ILogSink[]
+var profile = File.ReadAllText("profile.txt").Trim();
+
+if (profile == "console")
 {
-    new ConsoleLogSink(formatter),
-    sqliteSink
-};
+    services.AddSingleton<ILogSink, ConsoleLogSink>();
+}
+else if (profile == "file")
+{
+    services.AddSingleton<ILogSink>(_ => new SqliteLogSink("logs.db"));
+}
+else
+{
+    throw new InvalidOperationException(
+        $"Неизвестный профиль: {profile}");
+}
 
-var processor = new LogProcessor(importer, filter, sinks);
+services.AddSingleton<LogProcessor>(provider =>
+    new LogProcessor(
+        provider.GetRequiredService<W3CLogParser>(),
+        provider.GetRequiredService<LogFilter>(),
+        provider.GetServices<ILogSink>()));
 
-processor.Process();
+services.AddSingleton<LogHubApplication>();
 
-Console.WriteLine();
-Console.WriteLine($"Записано: {processor.Written}");
-Console.WriteLine($"Пропущено: {processor.Skipped}");
+using var provider = services.BuildServiceProvider();
 
+var app = provider.GetRequiredService<LogHubApplication>();
+app.Run(args[0]);
+
+// Демонстрация обхода графа.
 var serviceA = new Node("Service A");
 var serviceB = new Node("Service B");
 var serviceC = new Node("Service C");
@@ -54,6 +67,7 @@ foreach (var service in graph.DepthFirst(serviceA))
     }
 }
 
+// Демонстрация поиска цикла.
 var cycleStart = new Node("Cycle A");
 var cycleMiddle = new Node("Cycle B");
 var cycleEnd = new Node("Cycle C");
@@ -72,26 +86,3 @@ else
 {
     Console.WriteLine("Циклов не найдено.");
 }
-var profile = File.ReadAllText("profile.txt").Trim();
-
-if (profile == "console")
-{
-    services.AddSingleton<ILogSink, ConsoleLogSink>();
-}
-else if (profile == "file")
-{
-    services.AddSingleton<ILogSink>(_ => new SqliteLogSink("logs.db"));
-}
-else
-{
-    throw new InvalidOperationException(
-        $"Неизвестный профиль: {profile}");
-}
-
-services.AddSingleton<LogProcessor>();
-services.AddSingleton<LogHubApplication>();
-
-using var provider = services.BuildServiceProvider();
-
-var app = provider.GetRequiredService<LogHubApplication>();
-app.Run(args[0]);
